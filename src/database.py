@@ -101,3 +101,15 @@ def get_messages_by_notebook(notebook_id: int):
     conn.close()
     return messages
 
+if __name__ == "__main__":
+    print("testing functionality")
+    notebookid = create_notebook("computer science")
+    print(notebookid, " was created or found")
+
+    save_message(notebookid, "user", "what is this mean?")
+    save_message(notebookid, "ai", "this means that ...")
+
+    messages = get_messages_by_notebook(notebookid)
+    print("chat history:")
+    for message in messages:
+        print(message)
