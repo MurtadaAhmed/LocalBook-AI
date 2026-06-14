@@ -29,10 +29,11 @@ def get_llm():
 
     llm = LlamaCpp(
         model_path=LLM_MODEL_PATH,
-        temperature=0.1,
+        temperature=0.3,
+        repeat_penalty=1.15,
         n_ctx=10000, # context window size
         n_threads=4, # number of threads
-        max_tokens=1000, # maximum for AI response
+        max_tokens=10000, # maximum for AI response
         streaming=True, # for real-time effect in UI
         verbose=False # disable c++ diagnostic logs
     )
@@ -51,8 +52,8 @@ def get_conversational_chain(notebook_id: int):
 
     prompt_template = """
 <|im_start|>system You are a helpful and polite data assistant. Use the provided context to answer the user's question. 
-If the information is not in the context, clearly state that, but feel free to provide general 
-knowledge if it helps explain the context better. Maintain a conversational tone.
+If the information is not in the context, clearly state that.
+IMPORTANT: Keep your answers concise, well-structured, and always ensure you fully complete your final sentence.
 Context:
 {context}
 <|im_end|>

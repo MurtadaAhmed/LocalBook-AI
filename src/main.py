@@ -216,7 +216,7 @@ def main(page: ft.Page):
                 if temp_user_msg and content:
                     chat_history_formatted.append((temp_user_msg, content))
                     temp_user_msg = ""
-
+        chat_history_formatted = chat_history_formatted[-3:]
         def stream_ai_response():
             import brain
             full_response = ""
