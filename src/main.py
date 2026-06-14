@@ -143,13 +143,7 @@ def main(page: ft.Page):
 
     # --- INPUT BAR LOGIC ---
 
-    user_input = ft.TextField(
-        hint_text="As a question about your documents",
-        expand=True,
-        border_radius=20,
-        filled=True,
-        shift_enter=True
-    )
+    user_input = None
 
     def handle_send_click(e):
         active_id = page.session.get("active_notebook_id")
@@ -178,6 +172,18 @@ def main(page: ft.Page):
                     database.save_message(active_id, "ai", full_response)
 
         threading.Thread(target=stream_ai_response, daemon=True).start()
+
+
+    user_input = ft.TextField(
+        hint_text="As a question about your documents",
+        expand=True,
+        border_radius=20,
+        filled=True,
+        shift_enter=True,
+        on_submit=handle_send_click
+    )
+
+
 
     upload_button = ft.IconButton(
         icon = ft.icons.ATTACH_FILE,
