@@ -64,9 +64,9 @@ def create_notebook(name: str):
 def get_all_notebooks():
     """return all notebooks ordered by the newest ones"""
     conn = get_connection()
-    curser = conn.cursor()
-    curser.execute("SELECT id, name, created_at FROM notebooks ORDER BY created_at DESC")
-    notebooks = curser.fetchall()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, created_at FROM notebooks ORDER BY created_at DESC")
+    notebooks = cursor.fetchall()
     conn.close()
     return notebooks
 
