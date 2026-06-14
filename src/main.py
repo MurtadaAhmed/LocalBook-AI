@@ -8,11 +8,21 @@ def main(page: ft.Page):
     page.session.set("active_notebook_id", None)
     page.add(ft.Text("Hello, GUI world", size=30))
 
+    notebook_list = ft.ListView(expand=True, spacing=5)
+    notebook_list.controls.append(ft.Text("notebooks will appear here ... ", color=ft.colors.GREEN_500))
+
     sidebar = ft.Container(
         width=260,
         bgcolor=ft.colors.SURFACE_VARIANT,
         padding=10,
-        content=ft.Text("sidebar goes here")
+        content=ft.Column(
+            controls=[
+                ft.Text("Workspaces", size=20, weight=ft.FontWeight.BOLD),
+                ft.ElevatedButton(" + New Notebook", width=240),
+                ft.Divider(height=20, color=ft.colors.OUTLINE),
+                notebook_list
+            ]
+        )
     )
 
     main_content = ft.Container(
