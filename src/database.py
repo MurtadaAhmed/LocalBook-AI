@@ -3,6 +3,8 @@ get_connection(): connects to the chat_history.db
 init_db(): establishes the connection and create two tables, one for the notebooks, and one for the messages
 create_notebook(name: str): create notebook and returns its ID or returns existing notebook ID.
 get_all_notebooks(): returns all the created notebooks ordered by the newest ones.
+delete_notebook(notebook_id: int): deletes a notebook by its id
+save_message(notebook_id: int, role: str, content: str): saves a single chat message in the notebook table
 """
 
 import sqlite3
@@ -68,10 +70,23 @@ def get_all_notebooks():
     return notebooks
 
 def delete_notebook(notebook_id: int):
-    ...
+    """delete a notebook by its id"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM notebooks WHERE id = ?", (notebook_id,))
+    conn.commit()
+    conn.close()
 
 def save_message(notebook_id: int, role: str, content: str):
-    ...
+    """save a single chat message in the message table"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO messages (notebook_id, role, content) values (?, ?, ?)",
+        (notebook_id, role, content)
+    )
+    conn.commit()
+    conn.close()
 
 def get_messages_by_notebook(notebook_id: int):
     ...
