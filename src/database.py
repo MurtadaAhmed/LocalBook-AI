@@ -11,7 +11,9 @@ get_messages_by_notebook(notebook_id: int): returns all messages for a specific 
 import sqlite3
 import os
 
-DB_PATH = "storage/chat_history.db"
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SRC_DIR)
+DB_PATH = os.path.join(ROOT_DIR, "storage", "chat_history.db")
 
 def get_connection():
     """Create database connection and return it"""

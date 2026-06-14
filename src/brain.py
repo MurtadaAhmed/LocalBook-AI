@@ -15,17 +15,20 @@ from threading import Thread
 from queue import Queue
 import time
 
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SRC_DIR)
+LLM_MODEL_PATH = os.path.join(ROOT_DIR, "models", "qwen2.5-1.5b-instruct-q4_k_m.gguf")
+
 def get_llm():
     """initialize and load local llm model"""
     print("Loading local LLM model (it might take a few seconds)...")
 
-    model_path = "../models/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    if not os.path.exists(LLM_MODEL_PATH):
+        raise FileNotFoundError(f"Model path is missing. expected it at: {LLM_MODEL_PATH}")
 
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(f"Model path is missing. expected it at: {model_path}")
 
     llm = LlamaCpp(
-        model_path=model_path,
+        model_path=LLM_MODEL_PATH,
         temperature=0.1,
         n_ctx=4096, # context window size
         n_threads=4, # number of threads

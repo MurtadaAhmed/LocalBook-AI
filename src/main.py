@@ -1,5 +1,8 @@
 import flet as ft
 import database
+import os
+import ingestion
+import threading
 
 def main(page: ft.Page):
     page.title = "LocalBook AI"
@@ -41,6 +44,30 @@ def main(page: ft.Page):
         page.update()
 
 
+    # --- FILE DASHBOARD LOGIC --
+
+    files_row = ft.Row(wrap=True)
+
+    def load_workspace_files(notebook_id):
+        files_row.controls.clear()
+        files = ingestion.get_notebook_files(notebook_id)
+
+        if files:
+            for f in files:
+                file_name = os.path.basename(f)
+                files_row.controls.append(
+                    ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.icons.INSERT_DRIVE_FILE, size=14, color=ft.colors.WHITE70),
+                            ft.Text(file_name, size=12, color=ft.colors.WHITE)
+                        ], spacing=5),
+                        bgcolor=ft.colors.BLUE_GREY_800,
+                        padding=ft.padding.symmetric(horizontal=10, vertical=5),
+                        border_radius=15
+                    )
+                )
+        page.update()
+
     # --- SIDEBAR UI LOGIC ---#
     notebook_list = ft.ListView(expand=True, spacing=5)
 
@@ -64,6 +91,7 @@ def main(page: ft.Page):
     def select_notebook(notebook_id):
         page.session.set("active_notebook_id", notebook_id)
         load_chat_history(notebook_id)
+        load_workspace_files(notebook_id)
 
     # --- Dialog Logic ---
 
@@ -90,6 +118,29 @@ def main(page: ft.Page):
         new_notebook_dialog.open = True
         page.update()
 
+    # --- FILE UPLOAD LOGIC ---
+
+    def handle_file_upload(e: ft.FilePickerResultEvent):
+        active_id = page.session.get("active_notebook_id")
+        if not active_id or not e.files:
+            return
+
+        file_path = e.files[0].path
+
+        chat_list.controls.append(
+            ft.Text(f"processing {e.files[0].name} ... please wait.", color=ft.colors.YELLOW_400, italic=True)
+        )
+        page.update()
+
+        ingestion.add_document_to_notebook(active_id, file_path)
+        chat_list.controls.pop()
+        load_workspace_files(active_id)
+
+    file_picker = ft.FilePicker(on_result=handle_file_upload)
+    page.overlay.append(file_picker)
+
+
+
     # --- INPUT BAR LOGIC ---
 
     user_input = ft.TextField(
@@ -106,13 +157,34 @@ def main(page: ft.Page):
         if not active_id or not user_input.value:
             return
 
-        database.save_message(active_id, "user", user_input.value)
-
-        database.save_message(active_id, "ai", "I am a placeholder AI response! We will connect the real brain soon.")
-
+        user_text = user_input.value
         user_input.value = ""
 
-        load_chat_history(active_id)
+        database.save_message(active_id, "user", user_text)
+        chat_list.controls.append(create_chat_bubble("user", user_text))
+        ai_bubble = create_chat_bubble("ai", "")
+        chat_list.controls.append(ai_bubble)
+        page.update()
+
+        def stream_ai_response():
+            import brain
+            full_response = ""
+            for chunk in brain.ask_question_stream(active_id, user_text, []):
+                if chunk["type"] == "token":
+                    full_response += chunk["content"]
+                    ai_bubble.controls[0].content.value = full_response
+                    page.update()
+                elif chunk["type"] == "sources":
+                    database.save_message(active_id, "ai", full_response)
+
+        threading.Thread(target=stream_ai_response, daemon=True).start()
+
+    upload_button = ft.IconButton(
+        icon = ft.icons.ATTACH_FILE,
+        icon_color=ft.colors.GREY_400,
+        icon_size=25,
+        on_click=lambda _: file_picker.pick_files(allow_multiple=False)
+    )
 
     send_button = ft.IconButton(
         icon = ft.icons.SEND_ROUNDED,
@@ -122,7 +194,7 @@ def main(page: ft.Page):
     )
 
     input_row = ft.Row(
-        controls=[user_input, send_button],
+        controls=[upload_button, user_input, send_button],
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN
     )
 
@@ -147,6 +219,8 @@ def main(page: ft.Page):
         padding=20,
         content=ft.Column(
             controls=[
+                files_row,
+                ft.Divider(height=10, color=ft.colors.TRANSPARENT),
                 chat_list,
                 input_row
             ]

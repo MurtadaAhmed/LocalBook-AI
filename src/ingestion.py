@@ -18,15 +18,24 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
-CHROMA_DIR = "../storage/vector_db"
+_EMBEDDING_MODEL = None
+
+SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SRC_DIR)
+
+CHROMA_DIR = os.path.join(ROOT_DIR, "storage", "vector_db")
+EMBEDDING_MODEL_PATH = os.path.join(ROOT_DIR, "models", "all-MiniLM-L6-v2")
 
 def get_embedding_model():
     """load the local embedding model"""
-    print("Loading local embedding model...")
-    return HuggingFaceEmbeddings(
-        model_name="../models/all-MiniLM-L6-v2",
-        model_kwargs={'device': 'cpu'}
-    )
+    global _EMBEDDING_MODEL
+    if _EMBEDDING_MODEL is None:
+        print("Loading local embedding model (Global Init)...")
+        _EMBEDDING_MODEL = HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL_PATH,
+            model_kwargs={'device': 'cpu'}
+        )
+    return _EMBEDDING_MODEL
 
 def get_vector_store(notebook_id: int, embedding_model=None):
     """retrieves or create vector collection for a notebook"""
