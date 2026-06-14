@@ -10,15 +10,19 @@ delete_document_from_notebook(notebook_id: int, file_path: str): finds all docum
 
 import os
 import shutil
+import threading
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from chromadb.config import Settings
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+import chromadb
 
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
 _EMBEDDING_MODEL = None
+_CHROMA_CLIENT = None
+_MODEL_LOCK = threading.Lock()
 
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SRC_DIR)
@@ -26,15 +30,29 @@ ROOT_DIR = os.path.dirname(SRC_DIR)
 CHROMA_DIR = os.path.join(ROOT_DIR, "storage", "vector_db")
 EMBEDDING_MODEL_PATH = os.path.join(ROOT_DIR, "models", "all-MiniLM-L6-v2")
 
+def get_chroma_client():
+    """Safely initialize the ChromaDB client once for all threads"""
+    global _CHROMA_CLIENT
+    with _MODEL_LOCK:
+        if _CHROMA_CLIENT is None:
+            print("Initializing global ChromaDB client...")
+            os.makedirs(CHROMA_DIR, exist_ok=True)
+            _CHROMA_CLIENT = chromadb.PersistentClient(
+                path=CHROMA_DIR,
+                settings=Settings(anonymized_telemetry=False)
+            )
+    return _CHROMA_CLIENT
+
 def get_embedding_model():
     """load the local embedding model"""
     global _EMBEDDING_MODEL
-    if _EMBEDDING_MODEL is None:
-        print("Loading local embedding model (Global Init)...")
-        _EMBEDDING_MODEL = HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL_PATH,
-            model_kwargs={'device': 'cpu'}
-        )
+    with _MODEL_LOCK:
+        if _EMBEDDING_MODEL is None:
+            print("Loading local embedding model (Global Init)...")
+            _EMBEDDING_MODEL = HuggingFaceEmbeddings(
+                model_name=EMBEDDING_MODEL_PATH,
+                model_kwargs={'device': 'cpu'}
+            )
     return _EMBEDDING_MODEL
 
 def get_vector_store(notebook_id: int, embedding_model=None):
@@ -45,13 +63,9 @@ def get_vector_store(notebook_id: int, embedding_model=None):
     collection_name = f"notebook_{notebook_id}"
 
     return Chroma(
+        client=get_chroma_client(),
         collection_name=collection_name,
         embedding_function=embedding_model,
-        persist_directory=CHROMA_DIR,
-        client_settings=Settings(
-            anonymized_telemetry=False,
-            is_persistent=True,
-        )
     )
 
 def clear_notebook_vector_store(notebook_id: int):
