@@ -214,6 +214,7 @@ def main(page: ft.Page):
                 if chunk["type"] == "token":
                     full_response += chunk["content"]
                     ai_bubble.controls[0].content.value = full_response
+                    chat_list.scroll_to(offset=-1, duration=0)
                     page.update()
                 elif chunk["type"] == "sources":
                     database.save_message(active_id, "ai", full_response)
