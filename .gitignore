@@ -1,6 +1,5 @@
 # .gitignore
 venv/
 __pycache__/
-models/
 storage/
 .env
