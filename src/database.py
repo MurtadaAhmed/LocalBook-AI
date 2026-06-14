@@ -2,6 +2,7 @@
 get_connection(): connects to the chat_history.db
 init_db(): establishes the connection and create two tables, one for the notebooks, and one for the messages
 create_notebook(name: str): create notebook and returns its ID or returns existing notebook ID.
+get_all_notebooks(): returns all the created notebooks ordered by the newest ones.
 """
 
 import sqlite3
@@ -58,7 +59,13 @@ def create_notebook(name: str):
     return notebook_id
 
 def get_all_notebooks():
-    ...
+    """return all notebooks ordered by the newest ones"""
+    conn = get_connection()
+    curser = conn.cursor()
+    curser.execute("SELECT id, name, created_at FROM notebooks ORDER BY created_at DESC")
+    notebooks = curser.fetchall()
+    conn.close()
+    return notebooks
 
 def delete_notebook(notebook_id: int):
     ...
