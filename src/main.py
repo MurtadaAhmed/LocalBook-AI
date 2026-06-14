@@ -1,4 +1,6 @@
 import flet as ft
+from networkx.algorithms.community.quality import inter_community_non_edges
+
 import database
 
 def main(page: ft.Page):
@@ -65,11 +67,46 @@ def main(page: ft.Page):
         )
     )
 
+    chat_list = ft.ListView(expand=True, spacing=20, auto_scroll=True)
+    chat_list.controls.append(ft.Text("please select or create a workplace", color=ft.colors.GREY_500))
+
+    user_input = ft.TextField(
+        hint_text="As a question about your documents",
+        expand=True,
+        border_radius=20,
+        filled=True,
+        shift_enter=True
+    )
+
+    def handle_send_click(e):
+        if user_input.value:
+            print(f"user types: {user_input.value}")
+            user_input.value = ""
+            page.update()
+
+    send_button = ft.IconButton(
+        icon = ft.icons.SEND_ROUNDED,
+        icon_color=ft.colors.BLUE_400,
+        icon_size=30,
+        on_click=handle_send_click
+    )
+
+    input_row = ft.Row(
+        controls=[user_input, send_button],
+        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
+    )
+
     main_content = ft.Container(
         expand=True,
-        padding=10,
-        content=ft.Text("chat will go here")
+        padding=20,
+        content=ft.Column(
+            controls=[
+                chat_list,
+                input_row
+            ]
+        )
     )
+
 
     page.add(
         ft.Row(
