@@ -2,12 +2,18 @@
 get_llm(): initialize and load local llm model
 get_retriever(notebook_id: int): connects to a specific notebook vector database and returns a retriever
 get_conversational_chain(notebook_id: int): build the rag pipeline connecting the llm, the database, and the prompts
+ask_question_stream(notebook_id: int, query: str, chat_history: list): run RAG chain asynchronously and yields tokens one by one
+StreamHandler(BaseCallbackHandler): catches tokens from LLM thread and puts them in a safe queue
 """
 import os
 from langchain_community.llms import LlamaCpp
 from ingestion import get_vector_store
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import PromptTemplate
+from langchain.callbacks.base import BaseCallbackHandler
+from threading import Thread
+from queue import Queue
+import time
 
 def get_llm():
     """initialize and load local llm model"""
@@ -66,40 +72,83 @@ Context:
 
     return chain
 
+class StreamHandler(BaseCallbackHandler):
+    """catches tokens from LLM thread and puts them in a safe queue"""
+    def __init__(self, queue: Queue):
+        self.queue = queue
+
+    def on_llm_new_token(self, token: str, **kwargs) -> None:
+        self.queue.put(token)
+
+    def on_llm_end(self, *args, **kwargs) -> None:
+        self.queue.put(None)
+
+    def on_llm_error(self, *args, **kwargs) -> None:
+        self.queue.put(None)
+
+
+def ask_question_stream(notebook_id: int, query: str, chat_history: list):
+    """run RAG chain asynchronously and yields tokens one by one"""
+    chain = get_conversational_chain(notebook_id)
+    token_queue = Queue()
+    stream_handler = StreamHandler(token_queue)
+
+    final_result = {}
+
+    def run_chain():
+        result = chain.invoke(
+            {"question": query, "chat_history": chat_history},
+            config={"callbacks": [stream_handler]}
+        )
+
+        final_result["data"] = result
+
+    llm_thread = Thread(target=run_chain)
+    llm_thread.start()
+
+    while True:
+        token = token_queue.get()
+        if token is None:
+            break
+        yield {"type": "token", "content": token}
+
+    llm_thread.join()
+
+    yield {"type": "sources", "content": final_result["data"]["source_documents"]}
 
 
 if __name__ == "__main__":
     from ingestion import add_document_to_notebook, delete_document_from_notebook
 
-    print("Testing the Complete Brain Pipeline...")
+    print("Testing Thread-Safe Streaming Pipeline...")
     test_notebook = 999
-
     test_file_path = r"D:\GitHub\LocalBook-AI\fake_fact.txt"
 
+    # 1. Setup a much longer fake document
     with open(test_file_path, "w") as f:
-        f.write("The sky is made of green cheese and the capital of Bulgaria is Atlantis.")
-
+        f.write(
+            "Atlantis is the capital of Bulgaria. It is a beautiful underwater city "
+            "where citizens commute by riding trained dolphins. The traditional food "
+            "is a deep-sea kelp burger, and the mayor is a giant seahorse named Charles."
+        )
     add_document_to_notebook(test_notebook, test_file_path)
 
-    chain = get_conversational_chain(test_notebook)
+    query = "Describe the capital of Bulgaria in detail."
+    print(f"\nAsking AI: '{query}'")
+    print("Response stream: ", end="", flush=True)
 
-    query = "What is the capital of Bulgaria?"
-    print("fake information added to vector database: The sky is made of green cheese and the capital of Bulgaria is Atlantis.")
-    print(f"Asking AI the prompt: {query} ...")
+    # 2. Iterate through the synchronous generator
+    for chunk in ask_question_stream(test_notebook, query, []):
+        if chunk["type"] == "token":
+            print(chunk["content"], end="", flush=True)
+            time.sleep(0.05) # Artificially slow down the terminal for the typewriter effect
+        elif chunk["type"] == "sources":
+            print("\n\n--- Sources ---")
+            for doc in chunk["content"]:
+                print(doc.metadata.get('source', 'Unknown Source'))
 
-    response = chain.invoke({
-        "question": query,
-        "chat_history": []
-    })
-
-    print("AI response:")
-    print(response["answer"])
-
-    print("Sources used:")
-    for doc in response["source_documents"]:
-        print(doc.metadata.get('source', 'Unknown Source'))
-
-    print("Deleting the document")
+    # 3. Cleanup
+    print("\nDeleting the document...")
     delete_document_from_notebook(test_notebook, test_file_path)
     os.remove(test_file_path)
-    print("file deleted successfully")
+    print("Test complete.")
