@@ -99,10 +99,12 @@ def main(page: ft.Page):
         notebook_list.controls.clear()
         all_notebooks = database.get_all_notebooks()
 
+        active_id = page.session.get("active_notebook_id")
+
         for nb in all_notebooks:
             nb_id = nb[0]
             nb_name = nb[1]
-
+            is_active = (nb_id == active_id)
             del_btn = ft.IconButton(
                 icon=ft.icons.DELETE,
                 icon_color=ft.colors.RED_400,
@@ -112,9 +114,11 @@ def main(page: ft.Page):
 
             notebook_list.controls.append(
                 ft.ListTile(
-                    title=ft.Text(nb_name),
-                    leading=ft.Icon(ft.icons.LIBRARY_BOOKS),
+                    title=ft.Text(nb_name, weight=ft.FontWeight.BOLD if is_active else ft.FontWeight.NORMAL),
+                    leading=ft.Icon(ft.icons.LIBRARY_BOOKS, color=ft.colors.BLUE_400 if is_active else None),
                     trailing=del_btn,
+                    selected=is_active,
+                    bgcolor=ft.colors.BLUE_GREY_800 if is_active else None,
                     on_click=lambda e, id=nb_id: select_notebook(id)
                 )
             )
@@ -124,6 +128,8 @@ def main(page: ft.Page):
         page.session.set("active_notebook_id", notebook_id)
         load_chat_history(notebook_id)
         load_workspace_files(notebook_id)
+
+        load_notebooks()
 
     # --- Dialog Logic ---
 
