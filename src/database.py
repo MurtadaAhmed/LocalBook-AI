@@ -76,6 +76,7 @@ def delete_notebook(notebook_id: int):
     """delete a notebook by its id"""
     conn = get_connection()
     cursor = conn.cursor()
+    cursor.execute("DELETE FROM messages WHERE notebook_id = ?", (notebook_id,))
     cursor.execute("DELETE FROM notebooks WHERE id = ?", (notebook_id,))
     conn.commit()
     conn.close()

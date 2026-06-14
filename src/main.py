@@ -71,6 +71,19 @@ def main(page: ft.Page):
     # --- SIDEBAR UI LOGIC ---#
     notebook_list = ft.ListView(expand=True, spacing=5)
 
+    def delete_notebook_handler(notebook_id):
+        database.delete_notebook(notebook_id)
+        ingestion.clear_notebook_vector_store(notebook_id)
+
+        if page.session.get("active_notebook_id") == notebook_id:
+            page.session.set("active_notebook_id", None)
+            chat_list.controls.clear()
+            files_row.controls.clear()
+            chat_list.controls.append(
+                ft.Text("Please select or create a workspace from the left menu.", color=ft.colors.GREY_500, text_align=ft.TextAlign.CENTER)
+            )
+        load_notebooks()
+
     def load_notebooks():
         notebook_list.controls.clear()
         all_notebooks = database.get_all_notebooks()
@@ -79,10 +92,18 @@ def main(page: ft.Page):
             nb_id = nb[0]
             nb_name = nb[1]
 
+            del_btn = ft.IconButton(
+                icon=ft.icons.DELETE,
+                icon_color=ft.colors.RED_400,
+                tooltip="Delete Workspace",
+                on_click=lambda e, id=nb_id: delete_notebook_handler(id)
+            )
+
             notebook_list.controls.append(
                 ft.ListTile(
                     title=ft.Text(nb_name),
                     leading=ft.Icon(ft.icons.LIBRARY_BOOKS),
+                    trailing=del_btn,
                     on_click=lambda e, id=nb_id: select_notebook(id)
                 )
             )
