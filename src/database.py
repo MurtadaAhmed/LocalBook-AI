@@ -1,6 +1,7 @@
 """
 get_connection(): connects to the chat_history.db
 init_db(): establishes the connection and create two tables, one for the notebooks, and one for the messages
+create_notebook(name: str): create notebook and returns its ID or returns existing notebook ID.
 """
 
 import sqlite3
@@ -40,3 +41,31 @@ def init_db():
     conn.close()
 
 init_db()
+
+def create_notebook(name: str):
+    """creates new notebook and returns its ID. if it already exists, return the existing ID"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO notebooks (name) VALUES (?)", (name,))
+        conn.commit()
+        notebook_id = cursor.lastrowid
+    except sqlite3.IntegrityError:
+        cursor.execute("SELECT id FROM notebooks WHERE name = ?", (name, ))
+        notebook_id = cursor.fetchone()[0]
+    finally:
+        conn.close()
+    return notebook_id
+
+def get_all_notebooks():
+    ...
+
+def delete_notebook(notebook_id: int):
+    ...
+
+def save_message(notebook_id: int, role: str, content: str):
+    ...
+
+def get_messages_by_notebook(notebook_id: int):
+    ...
+
