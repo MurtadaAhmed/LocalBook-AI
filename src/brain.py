@@ -66,10 +66,26 @@ Context:
         input_variables=["context", "question"]
     )
 
+    condense_template = """<|im_start|>system
+    Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
+    <|im_end|>
+    <|im_start|>user
+    Chat History:
+    {chat_history}
+    Follow Up Input: {question}
+    <|im_end|>
+    <|im_start|>assistant
+    Standalone question:"""
+    CONDENSE_PROMPT = PromptTemplate(
+        template=condense_template,
+        input_variables=["chat_history", "question"]
+    )
+
     chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
         retriever=retriever,
         combine_docs_chain_kwargs={"prompt": QA_PROMPT},
+        condense_question_prompt=CONDENSE_PROMPT,
         return_source_documents=True
     )
 
@@ -79,15 +95,25 @@ class StreamHandler(BaseCallbackHandler):
     """catches tokens from LLM thread and puts them in a safe queue"""
     def __init__(self, queue: Queue):
         self.queue = queue
+        self.stream_active = True
+
+    def on_llm_start(self, serialized, prompts, **kwargs) -> None:
+        if prompts and "Standalone question:" in prompts[0]:
+            self.stream_active = False
+        else:
+            self.stream_active = True
 
     def on_llm_new_token(self, token: str, **kwargs) -> None:
-        self.queue.put(token)
+        if self.stream_active:
+            self.queue.put(token)
 
     def on_llm_end(self, *args, **kwargs) -> None:
-        self.queue.put(None)
+        if self.stream_active:
+            self.queue.put(None)
 
     def on_llm_error(self, *args, **kwargs) -> None:
-        self.queue.put(None)
+        if self.stream_active:
+            self.queue.put(None)
 
 
 def ask_question_stream(notebook_id: int, query: str, chat_history: list):

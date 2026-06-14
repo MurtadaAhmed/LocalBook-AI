@@ -160,10 +160,25 @@ def main(page: ft.Page):
         chat_list.controls.append(ai_bubble)
         page.update()
 
+        history_db = database.get_messages_by_notebook(active_id)
+        chat_history_formatted = []
+        temp_user_msg = ""
+        for msg in history_db:
+            role = msg[0]
+            content = msg[1]
+            if role == "user":
+                temp_user_msg = content
+            elif role == "ai":
+                # Only append complete pairs.
+                # (This naturally ignores the new user question we just saved above)
+                if temp_user_msg and content:
+                    chat_history_formatted.append((temp_user_msg, content))
+                    temp_user_msg = ""
+
         def stream_ai_response():
             import brain
             full_response = ""
-            for chunk in brain.ask_question_stream(active_id, user_text, []):
+            for chunk in brain.ask_question_stream(active_id, user_text, chat_history_formatted):
                 if chunk["type"] == "token":
                     full_response += chunk["content"]
                     ai_bubble.controls[0].content.value = full_response
