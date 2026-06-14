@@ -52,6 +52,10 @@ def main(page: ft.Page):
         files_row.controls.clear()
         files = ingestion.get_notebook_files(notebook_id)
 
+        def delete_file_handler(e, file_path_to_delete):
+            ingestion.delete_document_from_notebook(notebook_id, file_path_to_delete)
+            load_workspace_files(notebook_id)
+
         if files:
             for f in files:
                 file_name = os.path.basename(f)
@@ -59,8 +63,15 @@ def main(page: ft.Page):
                     ft.Container(
                         content=ft.Row([
                             ft.Icon(ft.icons.INSERT_DRIVE_FILE, size=14, color=ft.colors.WHITE70),
-                            ft.Text(file_name, size=12, color=ft.colors.WHITE)
-                        ], spacing=5),
+                            ft.Text(file_name, size=12, color=ft.colors.WHITE),
+                            ft.IconButton(
+                                icon=ft.icons.CLOSE,
+                                icon_color=ft.colors.RED_300,
+                                icon_size=14,
+                                tooltip="Remove file from workspace",
+                                on_click=lambda e, fp=f: delete_file_handler(e, fp)
+                            )
+                        ], spacing=5, alignment=ft.MainAxisAlignment.CENTER),
                         bgcolor=ft.colors.BLUE_GREY_800,
                         padding=ft.padding.symmetric(horizontal=10, vertical=5),
                         border_radius=15
