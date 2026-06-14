@@ -5,6 +5,7 @@ create_notebook(name: str): create notebook and returns its ID or returns existi
 get_all_notebooks(): returns all the created notebooks ordered by the newest ones.
 delete_notebook(notebook_id: int): deletes a notebook by its id
 save_message(notebook_id: int, role: str, content: str): saves a single chat message in the notebook table
+get_messages_by_notebook(notebook_id: int): returns all messages for a specific notebook
 """
 
 import sqlite3
@@ -89,5 +90,14 @@ def save_message(notebook_id: int, role: str, content: str):
     conn.close()
 
 def get_messages_by_notebook(notebook_id: int):
-    ...
+    """returns all messages for a specific notebook"""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT role, content, timestamp FROM messages WHERE notebook_id = ? ORDER BY id ASC",
+        (notebook_id,)
+    )
+    messages = cursor.fetchall()
+    conn.close()
+    return messages
 
