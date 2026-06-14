@@ -127,7 +127,7 @@ def main(page: ft.Page):
 
     # --- Dialog Logic ---
 
-    new_notebook_field = ft.TextField(label="Notebook Name", autofocus=True)
+    new_notebook_field = None
 
     def add_notebook(e):
         if new_notebook_field.value:
@@ -137,7 +137,11 @@ def main(page: ft.Page):
             page.dialog.open = False
             page.update()
 
-
+    new_notebook_field = ft.TextField(
+        label="Notebook Name",
+        autofocus=True,
+        on_submit=add_notebook
+    )
 
     new_notebook_dialog = ft.AlertDialog(
         title=ft.Text("Create New Workspace"),
