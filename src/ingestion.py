@@ -1,6 +1,7 @@
 """
 get_embedding_model(): loads the local embedding model.
 get_vector_store(notebook_id: int, embedding_model=None): retrieves or create vector collection for the notebook
+clear_notebook_vector_store(notebook_id: int): clears document vector for a notebook if deleted
 """
 
 import os
@@ -31,8 +32,14 @@ def get_vector_store(notebook_id: int, embedding_model=None):
         persist_directory=CHROMA_DIR
     )
 
-
-
 def clear_notebook_vector_store(notebook_id: int):
-    ...
+    """clears document vector for a notebook if deleted"""
+    embedding_model = get_embedding_model()
+    db = get_vector_store(notebook_id, embedding_model)
+    try:
+        db.delete_collection()
+        print(f"Cleaned up vector collection for Notebook {notebook_id}")
+    except Exception as e:
+        print(f"Error cleaning up vector collection for Notebook {notebook_id}: {e}")
+
 
