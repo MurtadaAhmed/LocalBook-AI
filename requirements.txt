@@ -11,7 +11,7 @@ llama-cpp-python==0.2.62
 sentence-transformers==2.7.0
 
 # Vector Database
-chromadb==0.4.24
+chromadb
 
 # Document Parsers (Multi-Extension Support)
 pypdf==4.2.0

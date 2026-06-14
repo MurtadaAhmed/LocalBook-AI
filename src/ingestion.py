@@ -8,14 +8,17 @@ import os
 import shutil
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from chromadb.config import Settings
 
-CHROMA_DIR = "storage/vector_db"
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
+CHROMA_DIR = "../storage/vector_db"
 
 def get_embedding_model():
     """load the local embedding model"""
     print("Loading local embedding model...")
     return HuggingFaceEmbeddings(
-        model_name="./models/all-MiniLM-L6-v2",
+        model_name="../models/all-MiniLM-L6-v2",
         model_kwargs={'device': 'cpu'}
     )
 
@@ -29,7 +32,11 @@ def get_vector_store(notebook_id: int, embedding_model=None):
     return Chroma(
         collection_name=collection_name,
         embedding_function=embedding_model,
-        persist_directory=CHROMA_DIR
+        persist_directory=CHROMA_DIR,
+        client_settings=Settings(
+            anonymized_telemetry=False,
+            is_persistent=True,
+        )
     )
 
 def clear_notebook_vector_store(notebook_id: int):
@@ -42,4 +49,12 @@ def clear_notebook_vector_store(notebook_id: int):
     except Exception as e:
         print(f"Error cleaning up vector collection for Notebook {notebook_id}: {e}")
 
+if __name__ == "__main__":
+    print("testing ...")
 
+    test_id = 999
+    model = get_embedding_model()
+
+    db = get_vector_store(test_id, model)
+
+    print(f"successfully generated collection {db._collection.name}")
