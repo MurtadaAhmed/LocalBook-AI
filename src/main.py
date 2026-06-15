@@ -14,12 +14,16 @@ def main(page: ft.Page):
     # --- CHAT UI LOGIC ---#
     chat_list = ft.ListView(expand=True, spacing=20, auto_scroll=True)
 
-    def create_chat_bubble(role: str, content: str):
+    def create_chat_bubble(role: str, content):
         is_user = role == "user"
+        if isinstance(content, str):
+            display_content = ft.Text(content, color=ft.colors.WHITE if is_user else ft.colors.BLACK)
+        else:
+            display_content = content
         return ft.Row(
             controls=[
                 ft.Container(
-                    content=ft.Text(content, color=ft.colors.WHITE if is_user else ft.colors.BLACK),
+                    content=display_content,
                     bgcolor=ft.colors.BLUE_700 if is_user else ft.colors.GREY_300,
                     padding=15,
                     border_radius=10,
@@ -202,7 +206,11 @@ def main(page: ft.Page):
 
         database.save_message(active_id, "user", user_text)
         chat_list.controls.append(create_chat_bubble("user", user_text))
-        ai_bubble = create_chat_bubble("ai", "")
+        loading_view = ft.Row([
+            ft.ProgressRing(width=16, height=16, stroke_width=2, color=ft.colors.BLACK),
+            ft.Text("Thinking...", color=ft.colors.BLACK, italic=True)
+        ])
+        ai_bubble = create_chat_bubble("ai", loading_view)
         chat_list.controls.append(ai_bubble)
         page.update()
 
@@ -224,8 +232,12 @@ def main(page: ft.Page):
         def stream_ai_response():
             import brain
             full_response = ""
+            is_first_token = True
             for chunk in brain.ask_question_stream(active_id, user_text, chat_history_formatted):
                 if chunk["type"] == "token":
+                    if is_first_token:
+                        ai_bubble.controls[0].content = ft.Text("", color=ft.colors.BLACK)
+                        is_first_token = False
                     full_response += chunk["content"]
                     ai_bubble.controls[0].content.value = full_response
                     chat_list.scroll_to(offset=-1, duration=0)
