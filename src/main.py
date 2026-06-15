@@ -4,12 +4,53 @@ import os
 import ingestion
 import threading
 import settings
+import psutil
+import time
 
 def main(page: ft.Page):
     page.title = "LocalBook AI"
     page.theme_mode = ft.ThemeMode.DARK
     page.padding = 0
     page.session.set("active_notebook_id", None)
+
+    # --- RESOURCE MONITOR UI ---
+    cpu_text = ft.Text("CPU: 0%", color=ft.colors.WHITE70, size=12)
+    ram_text = ft.Text("RAM: 0%", color=ft.colors.WHITE70, size=12)
+    page.appbar = ft.AppBar(
+        title=ft.Text("LocalBook AI", size=16, weight=ft.FontWeight.BOLD),
+        bgcolor=ft.colors.SURFACE_VARIANT,
+        actions=[
+            ft.Row([
+                ft.Icon(ft.icons.MEMORY, size=16, color=ft.colors.BLUE_400),
+                cpu_text,
+                ft.Container(width=10),
+                ft.Icon(ft.icons.STORAGE, size=16, color=ft.colors.BLUE_400),
+                ram_text,
+                ft.Container(width=20)  # right margin padding
+            ], alignment=ft.MainAxisAlignment.CENTER)
+        ]
+    )
+
+    def update_system_stats():
+        psutil.cpu_percent(interval=None)
+        while True:
+            try:
+                cpu = psutil.cpu_percent(interval=None)
+                ram = psutil.virtual_memory().percent
+
+                cpu_text.value = f"CPU: {cpu:.1f}%"
+                ram_text.value = f"RAM: {ram:.1f}%"
+
+                # Turn text red if hardware is struggling!
+                cpu_text.color = ft.colors.RED_400 if cpu > 85 else ft.colors.WHITE70
+                ram_text.color = ft.colors.RED_400 if ram > 85 else ft.colors.WHITE70
+
+                page.update()
+                time.sleep(1.5)  # Refresh rate
+            except Exception:
+                break
+
+    threading.Thread(target=update_system_stats, daemon=True).start()
 
     # --- CHAT UI LOGIC ---#
     chat_list = ft.ListView(expand=True, spacing=20, auto_scroll=True)
