@@ -3,6 +3,7 @@ import database
 import os
 import ingestion
 import threading
+import settings
 
 def main(page: ft.Page):
     page.title = "LocalBook AI"
@@ -292,12 +293,117 @@ def main(page: ft.Page):
     )
 
 
+
+    current_cfg = settings.load_settings()
+
+    def on_temp_change(e):
+        temp_slider.label = f"Temperature: {temp_slider.value:.1f}"
+        page.update()
+
+    def on_penalty_change(e):
+        penalty_slider.label = f"Repetition Penalty: {penalty_slider.value:.2f}"
+        page.update()
+
+    initial_temp = current_cfg.get("temperature", 0.3)
+    temp_slider = ft.Slider(
+        min=0.1, max=1.0, divisions=9,
+        value=initial_temp,
+        label=f"Temperature: {initial_temp:.1f}",
+        on_change=on_temp_change
+    )
+    initial_penalty = current_cfg.get("repeat_penalty", 1.15)
+    penalty_slider = ft.Slider(
+        min=1.0, max=1.5, divisions=10,
+        value=initial_penalty,
+        label=f"Repetition Penalty: {initial_penalty:.2f}",
+        on_change=on_penalty_change
+    )
+
+    tokens_input = ft.TextField(
+        label="Max Generation Tokens",
+        value=str(current_cfg.get("max_tokens", 4096)),
+        width=200
+    )
+
+    prompt_input = ft.TextField(
+        label="Default System Prompt Persona",
+        value=current_cfg.get("system_prompt", ""),
+        multiline=True,
+        min_lines=4,
+        max_lines=10,
+        height=150
+    )
+
+    def save_settings_click(e):
+        try:
+            new_cfg = {
+                "temperature": float(temp_slider.value),
+                "repeat_penalty": float(penalty_slider.value),
+                "max_tokens": int(tokens_input.value),
+                "system_prompt": prompt_input.value
+            }
+            if settings.save_settings(new_cfg):
+                page.snack_bar = ft.SnackBar(ft.Text("Settings successfully saved offline!"), bgcolor=ft.colors.GREEN_700)
+                page.snack_bar.open = True
+                page.update()
+        except Exception as err:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error parsing inputs: {err}"), bgcolor=ft.colors.RED_700)
+            page.snack_bar.open = True
+            page.update()
+
+    settings_view = ft.Container(
+        padding=30,
+        expand=True,
+        content=ft.Column(
+            scroll=ft.ScrollMode.AUTO,
+            spacing=25,
+            controls=[
+                ft.Text("Application & Local AI Model Tuning", size=22, weight=ft.FontWeight.BOLD),
+                ft.Divider(color=ft.colors.OUTLINE),
+
+                ft.Text("Model Creativity (Temperature)", weight=ft.FontWeight.BOLD),
+                ft.Text("Lower values are factual and predictable, higher values are creative.", size=12, color=ft.colors.GREY_400),
+                temp_slider,
+
+                ft.Text("Repetition Control (Repeat Penalty)", weight=ft.FontWeight.BOLD),
+                ft.Text("Prevents the model from falling into loops or repeating sentences.", size=12, color=ft.colors.GREY_400),
+                penalty_slider,
+
+                ft.Text("Response Bounds", weight=ft.FontWeight.BOLD),
+                tokens_input,
+
+                ft.Text("System Prompt Persona", weight=ft.FontWeight.BOLD),
+                prompt_input,
+
+                ft.ElevatedButton(
+                    text="Save Configurations",
+                    icon=ft.icons.SAVE,
+                    bgcolor=ft.colors.BLUE_700,
+                    color=ft.colors.WHITE,
+                    on_click=save_settings_click,
+                    height=45
+                )
+            ]
+        )
+    )
+
+    tabs_container = ft.Tabs(
+        selected_index=0,
+        animation_duration=300,
+        expand=True,
+        tabs=[
+            ft.Tab(text="Workspace Chat", icon=ft.icons.CHAT_BUBBLE_OUTLINE, content=main_content),
+            ft.Tab(text="Model Settings", icon=ft.icons.SETTINGS_OUTLINED, content=settings_view),
+        ]
+    )
+
+    page.controls.clear()
     page.add(
         ft.Row(
             controls=[
                 sidebar,
                 ft.VerticalDivider(width=1, color=ft.colors.OUTLINE),
-                main_content
+                tabs_container
             ],
             expand=True,
             spacing=0

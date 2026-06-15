@@ -14,6 +14,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 from threading import Thread
 from queue import Queue
 import time
+from settings import load_settings
 
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SRC_DIR)
@@ -26,14 +27,15 @@ def get_llm():
     if not os.path.exists(LLM_MODEL_PATH):
         raise FileNotFoundError(f"Model path is missing. expected it at: {LLM_MODEL_PATH}")
 
+    user_settings = load_settings()
 
     llm = LlamaCpp(
         model_path=LLM_MODEL_PATH,
-        temperature=0.3,
-        repeat_penalty=1.15,
+        temperature=user_settings.get("temperature", 0.3),
+        repeat_penalty=user_settings.get("repeat_penalty", 1.15),
+        max_tokens=user_settings.get("max_tokens", 4096),
         n_ctx=10000, # context window size
         n_threads=4, # number of threads
-        max_tokens=10000, # maximum for AI response
         streaming=True, # for real-time effect in UI
         verbose=False # disable c++ diagnostic logs
     )
@@ -49,16 +51,16 @@ def get_conversational_chain(notebook_id: int):
     """build the rag pipeline connecting the llm, the database, and the prompts"""
     llm = get_llm()
     retriever = get_retriever(notebook_id)
-
-    prompt_template = """
-<|im_start|>system You are a helpful and polite data assistant. Use the provided context to answer the user's question. 
-If the information is not in the context, clearly state that.
-IMPORTANT: Keep your answers concise, well-structured, and always ensure you fully complete your final sentence.
+    user_settings = load_settings()
+    sys_prompt_string = user_settings.get("system_prompt", "")
+    prompt_template = f"""
+<|im_start|>system 
+{sys_prompt_string}
 Context:
-{context}
+{{context}}
 <|im_end|>
 <|im_start|>user
-{question}
+{{question}}
 <|im_end|>
 <|im_start|>assistant
 """
