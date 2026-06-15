@@ -30,9 +30,9 @@ def main(page: ft.Page):
         )
 
     def load_chat_history(notebook_id):
-        chat_list.controls.clear()
-        messages = database.get_messages_by_notebook(notebook_id)
 
+        messages = database.get_messages_by_notebook(notebook_id)
+        chat_list.controls.clear()
         if not messages:
             chat_list.controls.append(
                 ft.Text("No messages yet. Ask a question about your documents!", color=ft.colors.GREY_500, text_align=ft.TextAlign.CENTER)
@@ -50,8 +50,9 @@ def main(page: ft.Page):
     files_row = ft.Row(wrap=True)
 
     def load_workspace_files(notebook_id):
-        files_row.controls.clear()
+
         files = ingestion.get_notebook_files(notebook_id)
+        files_row.controls.clear()
 
         def delete_file_handler(e, file_path_to_delete):
             ingestion.delete_document_from_notebook(notebook_id, file_path_to_delete)
@@ -123,14 +124,16 @@ def main(page: ft.Page):
                     on_click=lambda e, id=nb_id: select_notebook(id)
                 )
             )
+
         page.update()
 
     def select_notebook(notebook_id):
         page.session.set("active_notebook_id", notebook_id)
+        load_notebooks()
         load_chat_history(notebook_id)
         load_workspace_files(notebook_id)
 
-        load_notebooks()
+
 
     # --- Dialog Logic ---
 
