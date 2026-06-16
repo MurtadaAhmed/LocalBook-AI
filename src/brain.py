@@ -59,7 +59,7 @@ def get_llm():
 def get_retriever(notebook_id: int):
     """connects to a specific notebook vector database and returns a retriever"""
     db = get_vector_store(notebook_id)
-    return db.as_retriever(search_kwargs={"k": 3})
+    return db.as_retriever(search_kwargs={"k": 7})
 
 def get_conversational_chain(notebook_id: int):
     """build the rag pipeline connecting the llm, the database, and the prompts"""
