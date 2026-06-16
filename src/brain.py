@@ -15,13 +15,18 @@ from threading import Thread
 from queue import Queue
 import time
 from settings import load_settings
+import threading
 
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SRC_DIR)
 LLM_MODEL_PATH = os.path.join(ROOT_DIR, "models", "qwen2.5-1.5b-instruct-q4_k_m.gguf")
 
+_LLM_INSTANCE = None
+_LLM_LOCK = threading.Lock()
+
 def get_llm():
     """initialize and load local llm model"""
+    global _LLM_INSTANCE
     print("Loading local LLM model (it might take a few seconds)...")
 
     if not os.path.exists(LLM_MODEL_PATH):
@@ -29,18 +34,27 @@ def get_llm():
 
     user_settings = load_settings()
 
-    llm = LlamaCpp(
-        model_path=LLM_MODEL_PATH,
-        temperature=user_settings.get("temperature", 0.3),
-        repeat_penalty=user_settings.get("repeat_penalty", 1.15),
-        max_tokens=user_settings.get("max_tokens", 4096),
-        n_ctx=10000, # context window size
-        n_threads=4, # number of threads
-        streaming=True, # for real-time effect in UI
-        verbose=False # disable c++ diagnostic logs
-    )
+    with _LLM_LOCK:
+        if _LLM_INSTANCE is None:
+            print("Loading local LLM model into memory (First time only)...")
 
-    return llm
+            if not os.path.exists(LLM_MODEL_PATH):
+                raise FileNotFoundError(f"Model path is missing. expected it at: {LLM_MODEL_PATH}")
+
+            user_settings = load_settings()
+
+            _LLM_INSTANCE = LlamaCpp(
+                model_path=LLM_MODEL_PATH,
+                temperature=user_settings.get("temperature", 0.3),
+                repeat_penalty=user_settings.get("repeat_penalty", 1.15),
+                max_tokens=user_settings.get("max_tokens", 4096),
+                n_ctx=10000,
+                n_threads=4,
+                streaming=True,
+                verbose=False
+            )
+
+    return _LLM_INSTANCE
 
 def get_retriever(notebook_id: int):
     """connects to a specific notebook vector database and returns a retriever"""
@@ -148,39 +162,14 @@ def ask_question_stream(notebook_id: int, query: str, chat_history: list):
 
     yield {"type": "sources", "content": final_result["data"]["source_documents"]}
 
+def update_llm_settings_live():
+    def _reload():
+        global _LLM_INSTANCE
+        print("Hot-swapping AI Model with new settings...")
 
-if __name__ == "__main__":
-    from ingestion import add_document_to_notebook, delete_document_from_notebook
+        with _LLM_LOCK:
+            _LLM_INSTANCE = None
 
-    print("Testing Thread-Safe Streaming Pipeline...")
-    test_notebook = 999
-    test_file_path = r"D:\GitHub\LocalBook-AI\fake_fact.txt"
-
-    # 1. Setup a much longer fake document
-    with open(test_file_path, "w") as f:
-        f.write(
-            "Atlantis is the capital of Bulgaria. It is a beautiful underwater city "
-            "where citizens commute by riding trained dolphins. The traditional food "
-            "is a deep-sea kelp burger, and the mayor is a giant seahorse named Charles."
-        )
-    add_document_to_notebook(test_notebook, test_file_path)
-
-    query = "Describe the capital of Bulgaria in detail."
-    print(f"\nAsking AI: '{query}'")
-    print("Response stream: ", end="", flush=True)
-
-    # 2. Iterate through the synchronous generator
-    for chunk in ask_question_stream(test_notebook, query, []):
-        if chunk["type"] == "token":
-            print(chunk["content"], end="", flush=True)
-            time.sleep(0.05) # Artificially slow down the terminal for the typewriter effect
-        elif chunk["type"] == "sources":
-            print("\n\n--- Sources ---")
-            for doc in chunk["content"]:
-                print(doc.metadata.get('source', 'Unknown Source'))
-
-    # 3. Cleanup
-    print("\nDeleting the document...")
-    delete_document_from_notebook(test_notebook, test_file_path)
-    os.remove(test_file_path)
-    print("Test complete.")
+        get_llm()
+        print("Hot-swap complete. Ready to chat")
+    Thread(target=_reload, daemon=True).start()

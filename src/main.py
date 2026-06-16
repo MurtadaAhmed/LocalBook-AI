@@ -51,6 +51,16 @@ def main(page: ft.Page):
                 break
 
     threading.Thread(target=update_system_stats, daemon=True).start()
+    def preload_ai_models():
+        import brain
+        import ingestion
+        print("Background Thread: Warming up AI models...")
+        ingestion.get_embedding_model()
+        brain.get_llm()
+        print("Background Thread: AI models are fully loaded and ready!")
+
+    threading.Thread(target=preload_ai_models, daemon=True).start()
+
 
     # --- CHAT UI LOGIC ---#
     chat_list = ft.ListView(expand=True, spacing=20, auto_scroll=True)
@@ -399,7 +409,9 @@ def main(page: ft.Page):
                 "system_prompt": prompt_input.value
             }
             if settings.save_settings(new_cfg):
-                page.snack_bar = ft.SnackBar(ft.Text("Settings successfully saved offline!"), bgcolor=ft.colors.GREEN_700)
+                import brain
+                brain.update_llm_settings_live()
+                page.snack_bar = ft.SnackBar(ft.Text("Settings saved and AI model successfully hot-swapped"), bgcolor=ft.colors.GREEN_700)
                 page.snack_bar.open = True
                 page.update()
         except Exception as err:
