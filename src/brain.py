@@ -48,8 +48,10 @@ def get_llm():
                 temperature=user_settings.get("temperature", 0.3),
                 repeat_penalty=user_settings.get("repeat_penalty", 1.15),
                 max_tokens=user_settings.get("max_tokens", 4096),
-                n_ctx=10000,
-                n_threads=4,
+                n_ctx=8192,
+                n_threads=os.cpu_count(),
+                n_batch=512,
+                n_gpu_layers=0,
                 streaming=True,
                 verbose=False
             )
@@ -59,7 +61,7 @@ def get_llm():
 def get_retriever(notebook_id: int):
     """connects to a specific notebook vector database and returns a retriever"""
     db = get_vector_store(notebook_id)
-    return db.as_retriever(search_kwargs={"k": 7})
+    return db.as_retriever(search_kwargs={"k": 5})
 
 def get_conversational_chain(notebook_id: int):
     """build the rag pipeline connecting the llm, the database, and the prompts"""
