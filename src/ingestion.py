@@ -10,6 +10,7 @@ delete_document_from_notebook(notebook_id: int, file_path: str): finds all docum
 
 import os
 import shutil
+import torch
 import threading
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
@@ -17,6 +18,7 @@ from chromadb.config import Settings
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import chromadb
+import re
 
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
@@ -29,6 +31,15 @@ ROOT_DIR = os.path.dirname(SRC_DIR)
 
 CHROMA_DIR = os.path.join(ROOT_DIR, "storage", "vector_db")
 EMBEDDING_MODEL_PATH = os.path.join(ROOT_DIR, "models", "all-MiniLM-L6-v2")
+
+def clean_text(text: str) -> str:
+    """Remove PDF artifacts: excessive whitespace and isolated page numbers"""
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r'[ \t]{2,}', ' ', text)
+    text = re.sub(r'^\s*\d+\s*\n', '', text, flags=re.MULTILINE)
+    return text.strip()
+
+
 
 def get_chroma_client():
     """Safely initialize the ChromaDB client once for all threads"""
@@ -48,10 +59,12 @@ def get_embedding_model():
     global _EMBEDDING_MODEL
     with _MODEL_LOCK:
         if _EMBEDDING_MODEL is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            print(f"Loading local embedding model on {device.upper()}...")
             print("Loading local embedding model (Global Init)...")
             _EMBEDDING_MODEL = HuggingFaceEmbeddings(
                 model_name=EMBEDDING_MODEL_PATH,
-                model_kwargs={'device': 'cpu'}
+                model_kwargs={'device': device}
             )
     return _EMBEDDING_MODEL
 
@@ -93,9 +106,13 @@ def load_and_split_document(file_path: str):
 
     documents = loader.load()
 
+    for doc in documents:
+        doc.page_content = clean_text(doc.page_content)
+
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=100
+        chunk_size=800,
+        chunk_overlap=150,
+        add_start_index=True
     )
     chunks = text_splitter.split_documents(documents)
 

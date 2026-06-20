@@ -3,18 +3,22 @@ import json
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SRC_DIR)
 SETTINGS_PATH = os.path.join(ROOT_DIR, "storage", "settings.json")
+import torch
 
 DEFAULT_SETTINGS = {
     "temperature": 0.3,
-    "repeat_penalty": 1.15,
-    "max_tokens": 4096,
+    "repeat_penalty": 1.1,
+    "max_tokens": 512,
     "system_prompt": (
-        "You are an expert analytical assistant. Use the provided context to comprehensively answer the user's question. "
-        "Synthesize information from multiple parts of the text if necessary to provide a detailed, well-structured response. "
-        "Use bullet points or markdown formatting to make complex information easy to read. "
+        "You are an expert analytical assistant. Use the provided context to answer the user's question. "
+        "Synthesize information from ALL parts of the context. "
+        "When listing items, always list ALL of them completely. "
         "If the information is not in the context, clearly state that."
     )
 }
+
+def get_device():
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
 def load_settings():
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)

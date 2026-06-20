@@ -264,8 +264,16 @@ def main(page: ft.Page):
         ai_bubble = create_chat_bubble("ai", loading_view)
         chat_list.controls.append(ai_bubble)
         page.update()
-
-        history_db = database.get_messages_by_notebook(active_id)
+        from ingestion import get_notebook_files
+        files = get_notebook_files(active_id)
+        if not files:
+            ai_bubble.controls[0].content = ft.Text(
+                "⚠️ This workspace has no documents. Please upload a file first.",
+                color=ft.colors.ORANGE_400
+            )
+            page.update()
+            return
+        history_db = database.get_recent_messages_by_notebook(active_id, limit=4)
         chat_history_formatted = []
         temp_user_msg = ""
         for msg in history_db:
@@ -279,7 +287,7 @@ def main(page: ft.Page):
                 if temp_user_msg and content:
                     chat_history_formatted.append((temp_user_msg, content))
                     temp_user_msg = ""
-        chat_history_formatted = chat_history_formatted[-3:]
+        chat_history_formatted = chat_history_formatted
         def stream_ai_response():
             import brain
             full_response = ""

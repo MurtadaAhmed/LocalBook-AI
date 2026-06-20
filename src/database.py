@@ -48,6 +48,20 @@ def init_db():
 
 init_db()
 
+def get_recent_messages_by_notebook(notebook_id: int, limit: int = 6):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        """SELECT role, content FROM (
+               SELECT role, content, id FROM messages
+               WHERE notebook_id = ? ORDER BY id DESC LIMIT ?
+           ) ORDER BY id ASC""",
+        (notebook_id, limit)
+    )
+    messages = cursor.fetchall()
+    conn.close()
+    return messages
+
 def create_notebook(name: str):
     """creates new notebook and returns its ID. if it already exists, return the existing ID"""
     conn = get_connection()

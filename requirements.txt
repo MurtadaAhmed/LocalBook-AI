@@ -1,4 +1,8 @@
-# UI Framework
+# python 3.11
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+# pip install "numpy<2" --only-binary :all:
+# pip install llama-cpp-python --upgrade --force-reinstall --no-cache-dir --no-binary llama-cpp-python
+#UI Framework
 flet==0.22.0
 
 # AI Orchestration & RAG
@@ -7,7 +11,7 @@ langchain-community==0.0.34
 langchain-core==0.1.45
 
 # Local Inference & Embeddings
-llama-cpp-python==0.2.62
+llama-cpp-python
 sentence-transformers==2.7.0
 
 # Vector Database
