@@ -101,14 +101,19 @@ def ask_question_stream(notebook_id: int, query: str, chat_history: list):
         history_str = f"\nPrevious exchange:\nUser: {last_user}\nAssistant: {last_ai_short}\n"
 
     prompt_template = f"""<|system|>
-    {sys_prompt_string}{history_str}
-    Use the following context to answer the question. If the answer is not in the context, say so clearly.
-    Context:
-    {{context}}<|end|>
-    <|user|>
-    {{question}}<|end|>
-    <|assistant|>
-    """
+{sys_prompt_string}
+When citing information, mention the source file name.
+<|end|>
+<|user|>
+{history_str}
+---
+PROVIDED CONTEXT:
+{{context}}
+---
+
+Question: {{question}}<|end|>
+<|assistant|>
+"""
 
     QA_PROMPT = PromptTemplate(
         template=prompt_template,
@@ -118,11 +123,15 @@ def ask_question_stream(notebook_id: int, query: str, chat_history: list):
     llm = get_llm()
     retriever = get_retriever(notebook_id)
 
+    document_prompt = PromptTemplate(
+        input_variables=["page_content", "source"],
+        template="<chunk source=\"{source}\">\n{page_content}\n</chunk>"
+    )
     chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
         chain_type="stuff",
-        chain_type_kwargs={"prompt": QA_PROMPT},
+        chain_type_kwargs={"prompt": QA_PROMPT, "document_prompt": document_prompt},
         return_source_documents=True
     )
 
